@@ -4,13 +4,13 @@ use std::{
 };
 
 pub struct HeapItem<T> {
-    inner: T,
-    counter: usize,
+    pub inner: T,
+    pub counter: usize,
 }
 
 impl<T: Ord> HeapItem<T> {
     #[inline]
-    pub(crate) fn new(inner: T, pos: usize) -> Self {
+    pub fn new(inner: T, pos: usize) -> Self {
         HeapItem {
             inner,
             counter: pos,
@@ -19,13 +19,23 @@ impl<T: Ord> HeapItem<T> {
 
     /// Get a reference to the heap item's inner.
     #[inline]
-    pub(crate) fn inner(&self) -> &T {
+    pub fn inner(&self) -> &T {
         &self.inner
     }
 
     #[inline]
-    pub(crate) fn into_inner(self) -> T {
+    pub fn inner_mut(&mut self) -> &mut T {
+        &mut self.inner
+    }
+
+    #[inline]
+    pub fn into_inner(self) -> T {
         self.inner
+    }
+
+    /// Get a mutable reference to the heap item's counter.
+    pub fn counter_mut(&mut self) -> &mut usize {
+        &mut self.counter
     }
 }
 

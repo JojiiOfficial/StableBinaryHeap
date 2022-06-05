@@ -33,6 +33,12 @@ impl<T: Ord> StableBinaryHeap<T> {
         self.heap.push(heap_item);
     }
 
+    #[inline]
+    fn push_raw(&mut self, item: HeapItem<T>) {
+        self.counter = self.counter.max(item.counter);
+        self.heap.push(item);
+    }
+
     /// Returns a new HeapItem based wrapping around `inner`.
     /// The StableBinaryHeap's `counter` has to be manually increased after each call
     #[inline]
@@ -109,6 +115,42 @@ impl<T: Ord> StableBinaryHeap<T> {
     #[inline]
     pub fn pop(&mut self) -> Option<T> {
         self.heap.pop().map(|i| i.into_inner())
+    }
+
+    #[inline]
+    pub fn peek(&self) -> Option<&T> {
+        self.heap.peek().map(|i| i.inner())
+    }
+
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: Fn(&T) -> bool,
+    {
+        let tmp: Vec<_> = self.heap.drain().filter(|i| f(&i)).collect();
+
+        assert!(self.is_empty());
+
+        for i in tmp {
+            self.push_raw(i);
+        }
+    }
+
+    /// Get the stable binary heap's counter.
+    pub fn counter(&self) -> usize {
+        self.counter
+    }
+}
+
+pub struct Drain<'a, T> {
+    iter: std::collections::binary_heap::Drain<'a, HeapItem<T>>,
+}
+
+impl<'a, T: Ord> Iterator for Drain<'a, T> {
+    type Item = T;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next().map(|i| i.into_inner())
     }
 }
 
@@ -192,6 +234,20 @@ mod tests {
     }
 
     #[test]
+    fn test_stability_same() {
+        let mut heap = StableBinaryHeap::new();
+
+        for i in 0..1000 {
+            heap.push(UniqueItem::new(i, 0));
+        }
+
+        let vec = heap.into_sorted_vec();
+        for i in 0..1000 {
+            assert_eq!(vec[i].item, i as usize);
+        }
+    }
+
+    #[test]
     fn test_stability_simple() {
         let mut heap = StableBinaryHeap::new();
 
@@ -213,6 +269,18 @@ mod tests {
         for inp_len in (1..10000).step_by(71) {
             new_stability_test(inp_len);
         }
+    }
+
+    #[test]
+    fn test_retain() {
+        let mut heap = StableBinaryHeap::new();
+        for i in 0..=5 {
+            heap.push(i);
+        }
+
+        heap.retain(|i| *i != 2);
+
+        assert_eq!(heap.into_sorted_vec(), vec![5, 4, 3, 1, 0]);
     }
 
     fn new_stability_test(inp_len: usize) {
